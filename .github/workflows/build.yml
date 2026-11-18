@@ -1,0 +1,35 @@
+name: Build ASCII Draw APK
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip newest project
+        run: |
+          ZIP=$(ls -v asciidraw-source-v*.zip | tail -1)
+          echo "Using $ZIP"
+          unzip -oq "$ZIP"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Accept licenses and install SDK parts
+        run: |
+          SDKM=$(ls $ANDROID_HOME/cmdline-tools/*/bin/sdkmanager | head -1)
+          set +o pipefail
+          yes | $SDKM --licenses > /dev/null || true
+          $SDKM "platforms;android-33" "build-tools;30.0.3" > /dev/null
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '7.6.4'
+      - name: Build debug APK
+        working-directory: asciidraw_project
+        run: gradle assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ascii-draw-apk
+          path: asciidraw_project/app/build/outputs/apk/debug/app-debug.apk
